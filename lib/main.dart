@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Mi App',
       debugShowCheckedModeBanner: false,
-      home: InicioPage(), // ← Redirige directamente a la vista de inicio
+      home: InicioPage(),
     );
   }
 }
