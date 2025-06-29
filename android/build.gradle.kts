@@ -1,3 +1,10 @@
+// build.gradle.kts (nivel de PROYECTO RAÍZ)
+
+plugins {
+    // Aquí se declara la versión del plugin de Google Services
+    id("com.google.gms.google-services") version "4.4.3" apply false
+}
+
 allprojects {
     repositories {
         google()
@@ -5,6 +12,7 @@ allprojects {
     }
 }
 
+// Tu configuración personalizada de directorios
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 

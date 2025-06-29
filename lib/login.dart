@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dashboard.dart'; // Asegúrate de tener esta vista creada
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,20 +14,75 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  void _login() {
-    String email = _emailController.text.trim();
-    String password = _passwordController.text;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-    // Credenciales de ejemplo
-    if (email == "admin@gmail.com" && password == "123456") {
+  void _loginWithEmail() async {
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const DashboardPage()),
+        MaterialPageRoute(builder: (_) => const DashboardPage()),
       );
-    } else {
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No existe una cuenta con este correo.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'La contraseña es incorrecta.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'El correo ingresado no es válido.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'Esta cuenta ha sido deshabilitada.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'La credencial es inválida o ha expirado.';
+          break;
+        default:
+          errorMessage = 'Error al iniciar sesión. Intenta nuevamente.';
+      }
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Credenciales incorrectas')));
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error inesperado al iniciar sesión')),
+      );
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return; // El usuario canceló
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await _auth.signInWithCredential(credential);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardPage()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al iniciar con Google: $e')),
+      );
     }
   }
 
@@ -44,7 +101,6 @@ class _LoginPageState extends State<LoginPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _emailController,
@@ -55,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
               obscureText: true,
@@ -66,22 +122,17 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 24.0),
+            const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _login,
+              onPressed: _loginWithEmail,
               child: const Text('Iniciar sesión'),
             ),
-            const SizedBox(height: 24.0),
-            const Text(
-              'O iniciar sesión con:',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16.0),
-            ),
-            const SizedBox(height: 16.0),
-            Center(
-              child: IconButton(
-                iconSize: 60,
-                icon: SizedBox(
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: _loginWithGoogle,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: SizedBox(
                   width: 60,
                   height: 60,
                   child: Image.network(
@@ -89,9 +140,6 @@ class _LoginPageState extends State<LoginPage> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                onPressed: () {
-                  // Acción para iniciar sesión con Google
-                },
               ),
             ),
           ],

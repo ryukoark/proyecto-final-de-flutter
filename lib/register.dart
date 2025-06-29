@@ -1,7 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dashboard.dart'; // Asegúrate de tener esta vista creada
 
-class RegisterPage extends StatelessWidget {
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
+
+  @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _repeatPasswordController = TextEditingController();
+  final _birthdateController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  void _registerUser() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final repeatPassword = _repeatPasswordController.text;
+    final birthdate = _birthdateController.text.trim();
+
+    if (password != repeatPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Las contraseñas no coinciden')),
+      );
+      return;
+    }
+
+    try {
+      // Crear usuario en Firebase Auth
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      // Guardar datos extra en Firestore
+      await _firestore
+          .collection('usuarios')
+          .doc(userCredential.user!.uid)
+          .set({
+            'nombre_completo': name,
+            'correo': email,
+            'fecha_nacimiento': birthdate,
+            'uid': userCredential.user!.uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
+
+      // Redirigir a DashboardPage si el registro fue exitoso
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardPage()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al registrar: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,10 +79,9 @@ class RegisterPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
+                controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'Nombres y Apellidos',
                   border: OutlineInputBorder(
@@ -28,6 +91,7 @@ class RegisterPage extends StatelessWidget {
               ),
               const SizedBox(height: 16.0),
               TextField(
+                controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Correo Electrónico',
                   border: OutlineInputBorder(
@@ -37,6 +101,7 @@ class RegisterPage extends StatelessWidget {
               ),
               const SizedBox(height: 16.0),
               TextField(
+                controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
@@ -47,6 +112,7 @@ class RegisterPage extends StatelessWidget {
               ),
               const SizedBox(height: 16.0),
               TextField(
+                controller: _repeatPasswordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Repetir Contraseña',
@@ -57,6 +123,7 @@ class RegisterPage extends StatelessWidget {
               ),
               const SizedBox(height: 16.0),
               TextField(
+                controller: _birthdateController,
                 decoration: InputDecoration(
                   labelText: 'Fecha de nacimiento',
                   border: OutlineInputBorder(
@@ -65,21 +132,31 @@ class RegisterPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24.0),
+              ElevatedButton(
+                onPressed: _registerUser,
+                child: const Text('Registrarse'),
+              ),
+              const SizedBox(height: 24.0),
               const Text(
                 'O también puedes registrarte con:',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16.0),
               ),
               const SizedBox(height: 16.0),
-              Center(
-                child: IconButton(
-                  iconSize: 50,
-                  icon: Image.network(
-                    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/IOS_Google_icon.png/640px-IOS_Google_icon.png',
+              GestureDetector(
+                onTap: () {
+                  // Aquí puedes implementar Google Sign-In
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Image.network(
+                      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/IOS_Google_icon.png/640px-IOS_Google_icon.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  onPressed: () {
-                    // Acción para registrar con Google
-                  },
                 ),
               ),
             ],
