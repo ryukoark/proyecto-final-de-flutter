@@ -1,78 +1,71 @@
 import 'package:flutter/material.dart';
-import 'gemini_service.dart'; // Importamos el servicio que acabamos de crear
-
-// Un modelo simple para darle estructura a cada mensaje en el chat
-class ChatMessage {
-  final String text;
-  final bool isUser; // True si el mensaje es del usuario, false si es del bot
-
-  ChatMessage({required this.text, required this.isUser});
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'gemini_service.dart';
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  final String conversationId;
+  const ChatPage({super.key, required this.conversationId});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _textController = TextEditingController();
-  final GeminiService _geminiService = GeminiService();
-  final List<ChatMessage> _messages = []; // Lista para guardar la conversación
-  bool _isLoading = false; // Estado para mostrar un indicador de carga
+  final _controller = TextEditingController();
+  final _scrollController = ScrollController();
+  final _geminiService = GeminiService();
 
-  final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
 
-  @override
-  void initState() {
-    super.initState();
-    // Añadimos un mensaje de bienvenida del bot al iniciar la pantalla
-    _messages.add(
-      ChatMessage(
-        text: "Hola, soy Estud-IA. ¿Qué necesitas saber hoy?",
-        isUser: false,
-      ),
-    );
-  }
+  Future<void> _guardarMensajeFirestore(String texto, String rol) async {
+    if (uid == null) return;
 
-  // Función principal para enviar el mensaje y obtener respuesta
-  void _sendMessage() async {
-    final text = _textController.text;
-    if (text.isEmpty) return; // No hacer nada si el texto está vacío
-    _textController.clear();
+    final mensajesRef = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(uid)
+        .collection('conversaciones')
+        .doc(widget.conversationId)
+        .collection('mensajes');
 
-    // Actualiza la UI para mostrar el mensaje del usuario y el indicador de carga
-    setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true));
-      _isLoading = true;
+    await mensajesRef.add({
+      'texto': texto,
+      'rol': rol,
+      'timestamp': FieldValue.serverTimestamp(),
     });
 
-    _scrollToBottom();
+    await FirebaseFirestore.instance
+        .collection('chats')
+        .doc(uid)
+        .collection('conversaciones')
+        .doc(widget.conversationId)
+        .update({
+          'last_message': texto,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+  }
 
-    // Llama al servicio de Gemini para obtener la respuesta
+  Future<void> _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    _controller.clear();
+
+    setState(() => _isLoading = true);
+    await _guardarMensajeFirestore(text, 'usuario');
+
     try {
       final response = await _geminiService.getResponse(text);
-      // Actualiza la UI con la respuesta del bot
-      setState(() {
-        _messages.add(ChatMessage(text: response, isUser: false));
-        _isLoading = false;
-      });
-      _scrollToBottom();
-    } catch (e) {
-      // Maneja cualquier error
-      setState(() {
-        _messages.add(
-          ChatMessage(text: "Lo siento, algo salió mal.", isUser: false),
-        );
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      await _guardarMensajeFirestore(response, 'ia');
+    } catch (_) {
+      await _guardarMensajeFirestore("Lo siento, ocurrió un error.", 'ia');
     }
+
+    setState(() => _isLoading = false);
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
-    // Pequeño retraso para permitir que el ListView se actualice antes de hacer scroll
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -86,42 +79,84 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (uid == null) {
+      return const Scaffold(body: Center(child: Text('No autenticado')));
+    }
+
+    final mensajesRef = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(uid)
+        .collection('conversaciones')
+        .doc(widget.conversationId)
+        .collection('mensajes')
+        .orderBy('timestamp');
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Estud-IA"),
+        title: const Text('Estud-IA'),
         backgroundColor: Colors.blue,
       ),
       body: Column(
         children: [
-          // Área donde se muestran los mensajes
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                // Usamos un widget separado para la burbuja de mensaje
-                return _MessageBubble(message: message);
+            child: StreamBuilder<QuerySnapshot>(
+              stream: mensajesRef.snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final mensajes = snapshot.data?.docs ?? [];
+
+                // Scroll automático cuando se actualiza la lista
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                });
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: mensajes.length,
+                  itemBuilder: (context, index) {
+                    final data = mensajes[index].data() as Map<String, dynamic>;
+                    final text = data['texto'] ?? '';
+                    final isUser = data['rol'] == 'usuario';
+                    return Align(
+                      alignment:
+                          isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 5),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isUser ? Colors.blue : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          text,
+                          style: TextStyle(
+                            color: isUser ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
               },
             ),
           ),
-          // Muestra el indicador de "escribiendo..."
           if (_isLoading)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              padding: EdgeInsets.all(8),
               child: Row(
                 children: [
-                  CircularProgressIndicator(strokeWidth: 2),
+                  CircularProgressIndicator(),
                   SizedBox(width: 8),
                   Text("Estud-IA está pensando..."),
                 ],
               ),
             ),
-          // Área para escribir el mensaje
           _TextInputArea(
-            controller: _textController,
-            onSendMessage: _sendMessage,
+            controller: _controller,
+            onSend: _sendMessage,
             isLoading: _isLoading,
           ),
         ],
@@ -130,70 +165,39 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-// WIDGET PARA LA BURBUJA DE MENSAJE
-class _MessageBubble extends StatelessWidget {
-  final ChatMessage message;
-  const _MessageBubble({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      // Alinear a la derecha si es del usuario, a la izquierda si es del bot
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: message.isUser ? Colors.blue : Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            color: message.isUser ? Colors.white : Colors.black87,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// WIDGET PARA LA BARRA DE ESCRITURA
 class _TextInputArea extends StatelessWidget {
   final TextEditingController controller;
-  final VoidCallback onSendMessage;
+  final VoidCallback onSend;
   final bool isLoading;
 
   const _TextInputArea({
     required this.controller,
-    required this.onSendMessage,
+    required this.onSend,
     required this.isLoading,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         border: Border(top: BorderSide(color: Colors.grey[300]!)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: controller,
               decoration: const InputDecoration.collapsed(
-                hintText: "Escribe tu pregunta...",
+                hintText: "Escribe tu mensaje...",
               ),
-              // Permite enviar con el botón de "enter" en el teclado
-              onSubmitted: isLoading ? null : (_) => onSendMessage(),
+              onSubmitted: isLoading ? null : (_) => onSend(),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.send, color: Colors.blue),
-            // Deshabilita el botón mientras se espera una respuesta
-            onPressed: isLoading ? null : onSendMessage,
+            onPressed: isLoading ? null : onSend,
           ),
         ],
       ),

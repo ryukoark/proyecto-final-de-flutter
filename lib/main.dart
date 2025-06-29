@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart'; // 👈 Importar Firebase
+import 'profile.dart';
 import 'inicio.dart';
 
 Future<void> main() async {
@@ -17,10 +18,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Mi App',
       debugShowCheckedModeBanner: false,
-      home: InicioPage(), // Tu pantalla de inicio
+      initialRoute: '/', // Ruta inicial
+      routes: {
+        '/': (context) => const InicioPage(),
+        '/profile': (context) => const ProfilePage(), // 👈 Ruta añadida
+      },
     );
   }
 }
