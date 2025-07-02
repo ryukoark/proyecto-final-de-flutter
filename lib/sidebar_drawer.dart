@@ -38,17 +38,21 @@ class SidebarDrawer extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.menu_book),
+            title: const Text('Mis Exámenes'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/examenes');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.person),
             title: const Text('Perfil'),
             onTap: () {
-              Navigator.pop(context); // Cierra el drawer
-              Navigator.pushNamed(
-                context,
-                '/profile',
-              ); // Navega a la vista perfil
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/profile');
             },
           ),
-
           const Spacer(),
           const Divider(),
           ListTile(

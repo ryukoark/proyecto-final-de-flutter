@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart'; // 👈 Importar Firebase
 import 'profile.dart';
 import 'inicio.dart';
+import 'examen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 Necesario para Firebase
@@ -24,7 +25,8 @@ class MyApp extends StatelessWidget {
       initialRoute: '/', // Ruta inicial
       routes: {
         '/': (context) => const InicioPage(),
-        '/profile': (context) => const ProfilePage(), // 👈 Ruta añadida
+        '/profile': (context) => const ProfilePage(),
+        '/examenes': (_) => const ExamenView(), // 👈 Ruta añadida
       },
     );
   }

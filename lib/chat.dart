@@ -55,8 +55,21 @@ class _ChatPageState extends State<ChatPage> {
     await _guardarMensajeFirestore(text, 'usuario');
 
     try {
+      // Respuesta normal de la IA
       final response = await _geminiService.getResponse(text);
       await _guardarMensajeFirestore(response, 'ia');
+
+      // Generar examen basado en la respuesta
+      final promptExamen = '''
+Basado en el siguiente contenido:
+"$response"
+
+Genera entre 3 y 5 preguntas de repaso en forma de examen para evaluar la comprensión del usuario.
+Usa preguntas de opción múltiple o verdadero/falso, bien estructuradas y numeradas.
+''';
+
+      final examen = await _geminiService.getResponse(promptExamen);
+      await _guardarMensajeFirestore(examen, 'ia-examen');
     } catch (_) {
       await _guardarMensajeFirestore("Lo siento, ocurrió un error.", 'ia');
     }
@@ -107,7 +120,6 @@ class _ChatPageState extends State<ChatPage> {
                 }
                 final mensajes = snapshot.data?.docs ?? [];
 
-                // Scroll automático cuando se actualiza la lista
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _scrollToBottom();
                 });
@@ -119,7 +131,11 @@ class _ChatPageState extends State<ChatPage> {
                   itemBuilder: (context, index) {
                     final data = mensajes[index].data() as Map<String, dynamic>;
                     final text = data['texto'] ?? '';
-                    final isUser = data['rol'] == 'usuario';
+                    final rol = data['rol'];
+                    if (rol == 'ia-examen') return const SizedBox.shrink();
+                    final isUser = rol == 'usuario';
+                    final isExam = rol == 'ia-examen';
+
                     return Align(
                       alignment:
                           isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -127,14 +143,33 @@ class _ChatPageState extends State<ChatPage> {
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isUser ? Colors.blue : Colors.grey[300],
+                          color:
+                              isUser
+                                  ? Colors.blue
+                                  : isExam
+                                  ? Colors.orange[100]
+                                  : Colors.grey[300],
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text(
-                          text,
-                          style: TextStyle(
-                            color: isUser ? Colors.white : Colors.black87,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isExam)
+                              const Text(
+                                "📘 Preguntas de repaso:",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            if (isExam) const SizedBox(height: 6),
+                            Text(
+                              text,
+                              style: TextStyle(
+                                color: isUser ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
