@@ -60,7 +60,8 @@ class SidebarDrawer extends StatelessWidget {
             title: const Text('Cerrar sesión'),
             onTap: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.of(context).pushReplacementNamed('/login');
+              Navigator.of(context).pop();
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
         ],

@@ -1,5 +1,3 @@
-// lib/inicio.dart
-
 import 'package:flutter/material.dart';
 import 'login.dart';
 import 'register.dart';
@@ -22,6 +20,13 @@ class InicioPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.blue[200],
                 borderRadius: BorderRadius.circular(20.0),
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/logo.png', // Asegúrate que el logo esté aquí
+                  width: 120,
+                  height: 120,
+                ),
               ),
             ),
             const SizedBox(height: 50),
