@@ -1,16 +1,14 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_core/firebase_core.dart'; // 👈 Importar Firebase
+import 'package:firebase_core/firebase_core.dart';
 import 'profile.dart';
 import 'inicio.dart';
 import 'examen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 👈 Necesario para Firebase
-  await dotenv.load(fileName: ".env"); // Cargar variables de entorno
-  await Firebase.initializeApp(); // 👈 Inicializar Firebase
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -22,11 +20,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Mi App',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/', // Ruta inicial
+      initialRoute: '/',
       routes: {
         '/': (context) => const InicioPage(),
         '/profile': (context) => const ProfilePage(),
-        '/examenes': (_) => const ExamenView(), // 👈 Ruta añadida
+        '/examenes': (_) => const ExamenView(),
       },
     );
   }
