@@ -53,6 +53,14 @@ class SidebarDrawer extends StatelessWidget {
               Navigator.pushNamed(context, '/profile');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.library_books),
+            title: const Text('Biblioteca'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/biblioteca');
+            },
+          ),
           const Spacer(),
           const Divider(),
           ListTile(

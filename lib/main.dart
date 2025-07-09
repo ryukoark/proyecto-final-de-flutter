@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'profile.dart';
 import 'inicio.dart';
 import 'examen.dart';
+import 'biblioteca_view.dart'; // ← agrega esta línea
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const InicioPage(),
         '/profile': (context) => const ProfilePage(),
         '/examenes': (_) => const ExamenView(),
+        '/biblioteca': (_) => const BibliotecaView(),
       },
     );
   }
