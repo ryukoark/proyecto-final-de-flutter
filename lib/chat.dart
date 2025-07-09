@@ -64,19 +64,21 @@ class _ChatPageState extends State<ChatPage> {
 Basado en el siguiente contenido:
 "$response"
 
-Genera **exactamente 5 preguntas** de repaso en forma de examen para evaluar la comprensión del usuario.
-Utiliza una combinación de preguntas de opción múltiple y verdadero/falso.
-Numéralas claramente del 1 al 5, no incluyas ninguna otra pregunta ni explicación adicional.
-El formato debe ser claro y directo, como por ejemplo:
+Genera exactamente 5 preguntas de repaso tipo examen, combinando opción múltiple y verdadero/falso.
+Usa el siguiente formato **estrictamente**, sin explicación adicional ni repeticiones:
 
-1. **Verdadero o Falso:** [enunciado] ( )
-2. **Opción Múltiple:** [enunciado]
-   a) ...
-   b) ...
-   c) ...
-   d) ...
+1. Verdadero/Falso: [enunciado]
+a) Verdadero
+b) Falso
 
-No repitas respuestas al final ni resuelvas el examen. Solo genera las preguntas.
+2. Opción Múltiple: [enunciado]
+a) ...
+b) ...
+c) ...
+d) ...
+
+El texto debe contener solo las 5 preguntas, claramente enumeradas, con opciones en formato "a)", "b)", etc.
+No incluyas respuestas correctas ni explicaciones.
 ''';
 
       final examen = await _geminiService.getResponse(promptExamen);
