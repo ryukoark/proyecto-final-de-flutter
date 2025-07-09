@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dashboard.dart'; // Asegúrate de tener esta vista creada
+import 'package:google_sign_in/google_sign_in.dart';
+import 'dashboard.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -35,11 +36,9 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     try {
-      // Crear usuario en Firebase Auth
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      // Guardar datos extra en Firestore
       await _firestore
           .collection('usuarios')
           .doc(userCredential.user!.uid)
@@ -55,7 +54,6 @@ class _RegisterPageState extends State<RegisterPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
 
-      // Redirigir a DashboardPage si el registro fue exitoso
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DashboardPage()),
@@ -64,6 +62,48 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al registrar: $e')));
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      final user = userCredential.user!;
+      final userDoc =
+          await _firestore.collection('usuarios').doc(user.uid).get();
+
+      if (!userDoc.exists) {
+        await _firestore.collection('usuarios').doc(user.uid).set({
+          'nombre_completo': user.displayName ?? '',
+          'correo': user.email,
+          'fecha_nacimiento': '',
+          'uid': user.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardPage()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al iniciar con Google: $e')),
+      );
     }
   }
 
@@ -144,9 +184,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 16.0),
               GestureDetector(
-                onTap: () {
-                  // Aquí puedes implementar Google Sign-In
-                },
+                onTap: _signInWithGoogle,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(30),
                   child: SizedBox(
